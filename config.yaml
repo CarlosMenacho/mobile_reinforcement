@@ -1,0 +1,24 @@
+defaults:
+  - _self_
+
+# Training Settings
+
+num_episodes: 1000
+max_steps: 1000
+log_interval: 1
+save_interval: 100
+
+# Agent hyperparameters
+learning_rate: 0.00025
+gamma: 0.99
+epsilon_start: 1.0
+epsilon_end: 0.1
+epsilon_decay: 0.9995
+batch_size: 32
+buffer_size: 100000
+target_update_freq: 1000
+
+# Training device
+device: "cuda"
+
+output_dir: "outputs"

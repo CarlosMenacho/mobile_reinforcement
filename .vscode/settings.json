@@ -1,0 +1,10 @@
+{
+  "python.defaultInterpreterPath": "/home/carlos/anaconda3/envs/ros2_env/bin/python",
+  // "editor.defaultFormatter": "eeyore.yapf",
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": false,
+  "[python]": {
+    "editor.defaultFormatter": "eeyore.yapf",
+    "editor.formatOnSave": true
+  }
+}
