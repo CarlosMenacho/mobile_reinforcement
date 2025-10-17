@@ -35,14 +35,16 @@ class StageRobotEnv(Node):
         self.initial_pose = {'x': 0.0, 'y': 0.0, 'theta': 0.0}
         self.goal_pose = {'x': 0.0, 'y': 0.0}
 
+        self.odom_reference = {'x': 0.0, 'y': 0.0, 'theta': 0.0}
+        self.raw_robot_pose = {'x': 0.0, 'y': 0.0, 'theta': 0.0}
+
         self.episode_step = 0
         self.max_episode_step = 500
         self.min_obstacle_distance = 0.3
 
-        # Goal sampling parameters (adjust based on your environment size)
-        self.goal_range_x = [-8.0, 8.0]  # meters
-        self.goal_range_y = [-8.0, 8.0]  # meters
-        self.min_goal_distance = 2.0  # minimum distance from robot start position
+        self.goal_range_x = [0, 21]
+        self.goal_range_y = [-16, 0.0]
+        self.min_goal_distance = 2.0
 
     def laser_callback(self, msg):
         self.scan_data = np.array(msg.ranges)
@@ -50,23 +52,29 @@ class StageRobotEnv(Node):
 
     def odom_callback(self, msg):
         self.odom_data = msg
-        self.robot_pose['x'] = msg.pose.pose.position.x
-        self.robot_pose['y'] = msg.pose.pose.position.y
+
+        self.raw_robot_pose['x'] = msg.pose.pose.position.x
+        self.raw_robot_pose['y'] = msg.pose.pose.position.y
 
         # quat to euler angle (yaw)
         orientation = msg.pose.pose.orientation
         siny_cosp = 2 * (orientation.w * orientation.z + orientation.x * orientation.y)
         cosy_cosp = 1 - 2 * (orientation.y * orientation.y +
                              orientation.z * orientation.z)
-        self.robot_pose['theta'] = math.atan2(siny_cosp, cosy_cosp)
+        self.raw_robot_pose['theta'] = math.atan2(siny_cosp, cosy_cosp)
+
+        self.robot_pose['x'] = self.raw_robot_pose['x'] - self.odom_reference['x']
+        self.robot_pose['y'] = self.raw_robot_pose['y'] - self.odom_reference['y']
+
+        theta_diff = self.raw_robot_pose['theta'] - self.odom_reference['theta']
+        self.robot_pose['theta'] = math.atan2(math.sin(theta_diff),
+                                              math.cos(theta_diff))
 
     def set_random_goal(self):
-        """Sample a random goal position within defined ranges"""
         while True:
             goal_x = np.random.uniform(self.goal_range_x[0], self.goal_range_x[1])
             goal_y = np.random.uniform(self.goal_range_y[0], self.goal_range_y[1])
 
-            # Check if goal is far enough from robot's current position
             dx = goal_x - self.robot_pose['x']
             dy = goal_y - self.robot_pose['y']
             distance = math.sqrt(dx**2 + dy**2)
@@ -94,7 +102,6 @@ class StageRobotEnv(Node):
         angle_goal = math.atan2(math.sin(angle_goal), math.cos(angle_goal))
 
         # gather all state
-
         state = np.concatenate(
             [normalized_scan, [distance_goal / 10], [angle_goal / math.pi]])
 
@@ -170,8 +177,21 @@ class StageRobotEnv(Node):
         else:
             print("Reset Failed")
 
+        # Update odometry to get the new position after reset
+        rclpy.spin_once(self, timeout_sec=0.2)
+
+        # Store the current odometry as the reference point
+        # This makes the robot's pose relative to wherever it was reset
+        self.odom_reference['x'] = self.raw_robot_pose['x']
+        self.odom_reference['y'] = self.raw_robot_pose['y']
+        self.odom_reference['theta'] = self.raw_robot_pose['theta']
+
+        print(
+            f"Odom reference set: ({self.odom_reference['x']:.2f}, {self.odom_reference['y']:.2f}, {self.odom_reference['theta']:.2f})"
+        )
+
         # Set new random goal for this episode
-        rclpy.spin_once(self, timeout_sec=0.1)  # Update robot pose
+        rclpy.spin_once(self, timeout_sec=0.1)
         self.set_random_goal()
 
         return self.get_state()

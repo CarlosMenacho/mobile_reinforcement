@@ -1,11 +1,11 @@
 import hydra
 import logging
 import numpy as np
-from pathlib import Path
 import json
 import time
 import rclpy
 from omegaconf import DictConfig, OmegaConf
+from pathlib import Path
 
 from src.robot_env import StageRobotEnv
 from src.dqn_agent import DQNAgent
@@ -41,31 +41,28 @@ def main(cfg: DictConfig):
     log.info(f"Action dimension: {action_dim}")
 
     # Initialize agent
-    agent = DQNAgent(
-        state_dim=state_dim,
-        action_dim=action_dim,
-        learning_rate=cfg.learning_rate,
-        gamma=cfg.gamma,
-        epsilon_start=cfg.epsilon_start,
-        epsilon_end=cfg.epsilon_end,
-        epsilon_decay=cfg.epsilon_decay,
-        buffer_size=cfg.buffer_size,
-        batch_size=cfg.batch_size,
-        target_update_freq=cfg.target_update_freq,
-        device=cfg.device
-    )
+    agent = DQNAgent(state_dim=state_dim,
+                     action_dim=action_dim,
+                     learning_rate=cfg.learning_rate,
+                     gamma=cfg.gamma,
+                     epsilon_start=cfg.epsilon_start,
+                     epsilon_end=cfg.epsilon_end,
+                     epsilon_decay=cfg.epsilon_decay,
+                     buffer_size=cfg.buffer_size,
+                     batch_size=cfg.batch_size,
+                     target_update_freq=cfg.target_update_freq,
+                     device=cfg.device)
     log.info(f"DQN Agent initialized on device: {agent.device}")
 
-    # Training metrics
     episode_rewards = []
     episode_steps = []
     losses = []
 
-    # Create output directory
-    output_dir = Path(cfg.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = Path(hydra.core.hydra_config.HydraConfig.get().runtime.output_dir)
     checkpoint_dir = output_dir / "checkpoints"
-    checkpoint_dir.mkdir(exist_ok=True)
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+    log.info(f"Checkpoints will be saved to: {checkpoint_dir}")
 
     log.info("=" * 60)
     log.info("Starting training...")
@@ -118,8 +115,7 @@ def main(cfg: DictConfig):
                 # Check if episode is done
                 if done:
                     log.info(
-                        f"Episode {episode + 1} ended: {info.get('reason', 'unknown')}"
-                    )
+                        f"Episode {episode + 1} ended: {info.get('reason', 'unknown')}")
                     break
 
             # Record metrics
