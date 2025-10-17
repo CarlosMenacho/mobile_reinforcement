@@ -3,8 +3,8 @@ defaults:
 
 # Training Settings
 
-num_episodes: 1000
-max_steps: 1000
+num_episodes: 10000
+max_steps: 10000
 log_interval: 1
 save_interval: 100
 
